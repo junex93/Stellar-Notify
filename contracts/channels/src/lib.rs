@@ -7,7 +7,7 @@ mod events;
 #[allow(dead_code)]
 mod types;
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
 
 pub use errors::Error;
 pub use types::{Channel, ChannelKind, DataKey, MAX_ADMINS, MAX_PAYLOAD_BYTES};
@@ -25,6 +25,26 @@ pub struct ChannelsContract;
 /// - Extend the TTL of `Channel(id)` on every write and on `publish`.
 #[contractimpl]
 impl ChannelsContract {
+    /// D9 (v1): code upgrades are author-only. `upgrader` is fixed at deploy
+    /// time and can sign `upgrade` alone, with no notice period. Moving to a
+    /// multisig plus notice period is a later, announced change.
+    pub fn __constructor(env: Env, upgrader: Address) {
+        env.storage().instance().set(&DataKey::Upgrader, &upgrader);
+    }
+
+    pub fn upgrader(env: Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Upgrader)
+            .expect("constructor sets the upgrader")
+    }
+
+    /// Replaces the contract code. Requires the stored upgrader's auth.
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        Self::upgrader(env.clone()).require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
     pub fn version(_env: Env) -> u32 {
         1
     }
@@ -124,9 +144,27 @@ mod test {
 
     fn setup() -> (Env, ChannelsContractClient<'static>) {
         let env = Env::default();
-        let id = env.register(ChannelsContract, ());
+        let upgrader = Address::generate(&env);
+        let id = env.register(ChannelsContract, (upgrader,));
         let client = ChannelsContractClient::new(&env, &id);
         (env, client)
+    }
+
+    #[test]
+    fn constructor_stores_upgrader() {
+        let env = Env::default();
+        let upgrader = Address::generate(&env);
+        let id = env.register(ChannelsContract, (upgrader.clone(),));
+        let client = ChannelsContractClient::new(&env, &id);
+        assert_eq!(client.upgrader(), upgrader);
+    }
+
+    #[test]
+    fn upgrade_requires_upgrader_auth() {
+        let (env, client) = setup();
+        let hash = BytesN::from_array(&env, &[0; 32]);
+        // No auth mocked: the upgrader has not signed.
+        assert!(client.try_upgrade(&hash).is_err());
     }
 
     #[test]

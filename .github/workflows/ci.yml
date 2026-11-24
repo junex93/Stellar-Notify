@@ -8,6 +8,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: rustup target add wasm32v1-none
+      - run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libudev-dev pkg-config
       - run: cargo install --locked stellar-cli
       - run: npm i -g pnpm@10 && pnpm install --frozen-lockfile
       - run: cargo fmt --check --manifest-path contracts/channels/Cargo.toml

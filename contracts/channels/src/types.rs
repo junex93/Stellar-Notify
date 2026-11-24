@@ -2,7 +2,7 @@ use soroban_sdk::{contracttype, Address, Vec};
 
 /// Hard caps keep loops and event sizes bounded on attacker-shaped input.
 pub const MAX_ADMINS: u32 = 10;
-pub const MAX_PAYLOAD_BYTES: u32 = 1024;
+pub const MAX_PAYLOAD_BYTES: u32 = 4096; // docs/costs.md
 
 /// Open: anyone subscribes. Restricted: admins approve subscribers.
 /// Subscriptions are never stored on-chain (principle 2 / D6).
@@ -27,6 +27,8 @@ pub struct Channel {
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
+    /// Sole address allowed to upgrade the contract code (D9, v1).
+    Upgrader,
     NextId,
     Channel(u64),
     Publisher(u64, Address),
