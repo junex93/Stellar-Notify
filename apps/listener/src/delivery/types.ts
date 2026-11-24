@@ -24,3 +24,16 @@ export function failForStatus(name: string, status: number): never {
   }
   throw new Error(detail);
 }
+
+/** The target is gone for good (user blocked the bot, chat deleted): also stop routing to it. */
+export class TargetGoneError extends PermanentDeliveryError {}
+
+/** The target asked us to slow down; the next attempt waits at least this long. */
+export class RetryAfterError extends Error {
+  constructor(
+    message: string,
+    readonly retryAfterMs: number,
+  ) {
+    super(message);
+  }
+}

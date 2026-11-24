@@ -1,5 +1,6 @@
 import { connect, runMigrations } from "./db/index.js";
 import { ntfyAdapter } from "./delivery/ntfy.js";
+import { createTelegramAdapter } from "./delivery/telegram.js";
 import { webhookAdapter } from "./delivery/webhook.js";
 import { processDue } from "./delivery/worker.js";
 import { EnvelopeLoader, RpcEventSource, ingestOnce } from "./ingest/index.js";
@@ -22,6 +23,11 @@ await runMigrations(db);
 const source = new RpcEventSource(rpcUrl, contractId);
 const loader = new EnvelopeLoader(source);
 const adapters = [webhookAdapter, ntfyAdapter];
+if (process.env.TELEGRAM_BOT_TOKEN) {
+  adapters.push(createTelegramAdapter(process.env.TELEGRAM_BOT_TOKEN));
+} else {
+  log("warn", "TELEGRAM_BOT_TOKEN not set: telegram targets will be dead-lettered");
+}
 
 let running = true;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

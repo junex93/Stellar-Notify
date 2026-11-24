@@ -3,7 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadCursor, saveCursor } from "./db/cursor.js";
 import { type Db, connect, runMigrations } from "./db/index.js";
 import { deliveries, subscriptions } from "./db/schema.js";
-import { type DeliveryAdapter, PermanentDeliveryError } from "./delivery/types.js";
+import {
+  type DeliveryAdapter,
+  PermanentDeliveryError,
+  RetryAfterError,
+  TargetGoneError,
+} from "./delivery/types.js";
 import { processDue } from "./delivery/worker.js";
 import type { DecodedEvent, RawEvent } from "./ingest/decode.js";
 import { EnvelopeLoader, type EventSource, ingestOnce } from "./ingest/index.js";
@@ -138,6 +143,31 @@ describe.skipIf(!safe)("listener pipeline (Postgres)", () => {
       throw new PermanentDeliveryError("gone");
     });
     expect(await processDue(db, [a], loader)).toMatchObject({ dead: 1, retried: 0 });
+  });
+
+  it("waits at least the target's retry-after before the next attempt", async () => {
+    const { loader } = await seed();
+    const a = adapter(async () => {
+      throw new RetryAfterError("slow down", 120_000);
+    });
+    let now = new Date(Date.now() + 1000);
+    const opts = { baseDelayMs: 1000, maxDelayMs: 60_000, now: () => now };
+    expect(await processDue(db, [a], loader, opts)).toMatchObject({ retried: 1 });
+    now = new Date(now.getTime() + 60_000);
+    expect(await processDue(db, [a], loader, opts)).toEqual({ sent: 0, retried: 0, dead: 0 });
+    now = new Date(now.getTime() + 61_000);
+    expect(await processDue(db, [a], loader, opts)).toMatchObject({ retried: 1 });
+  });
+
+  it("deactivates a target that is gone so later events skip it", async () => {
+    const { target, loader } = await seed();
+    const a = adapter(async () => {
+      throw new TargetGoneError("blocked");
+    });
+    expect(await processDue(db, [a], loader)).toMatchObject({ dead: 1 });
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, target.id));
+    expect(sub?.active).toBe(false);
+    expect(await route(db, message("later"))).toBe(0);
   });
 
   it("dead-letters when the target is inactive or the event is gone", async () => {
