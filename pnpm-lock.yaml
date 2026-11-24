@@ -116,6 +116,9 @@ importers:
       '@stellar/stellar-sdk':
         specifier: 17.4.0
         version: 17.4.0
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
     devDependencies:
       vitest:
         specifier: 5.1.1

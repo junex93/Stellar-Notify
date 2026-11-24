@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "license": "Apache-2.0",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -11,7 +13,10 @@
   },
   "dependencies": {
     "@notify/protocol-types": "workspace:*",
-    "@stellar/stellar-sdk": "17.4.0"
+    "@stellar/stellar-sdk": "17.4.0",
+    "buffer": "^6.0.3"
   },
-  "devDependencies": { "vitest": "5.1.1" }
+  "devDependencies": {
+    "vitest": "5.1.1"
+  }
 }
