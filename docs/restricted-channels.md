@@ -1,6 +1,6 @@
 # Restricted channels: subscriber approval (D1) — design proposal
 
-Status: proposal for issue #9. Nothing here is implemented.
+Status: approved; contract side implemented for issue #9 (`approve_subscriber`, `remove_subscriber`, `is_approved`, `sub_ok`/`sub_rm`, `NotRestricted = 13`). The listener/bot side (salt storage, re-check on `sub_rm`) is not implemented.
 
 ## What "restricted" can and cannot mean
 Every published message is a public contract event, so a restricted channel cannot hide content from chain readers. Restriction controls **who receives pushes** from listeners. Confidentiality needs the publisher to encrypt the payload (already stated in `events.rs`). Admin approval gates the key/receipt side; it is not access control on the ledger.
@@ -44,7 +44,7 @@ Constraints from the project (issues #9, #18, #22, #23, `types.rs`):
 - **Unbounded set.** Unlike admins there is no `MAX` on subscribers; the cap is rent cost. Decide whether to enforce a per-channel limit.
 - **Salt distribution to the listener** is a deployment/config question (listener channel config), not a contract one.
 
-## Decisions needed before coding
-1. Accept salted commitments (B) over a Merkle root (D)?
-2. Where does the channel salt live for the listener (env/DB per channel)?
-3. Is `NotRestricted` an acceptable new error (appended as 13)?
+## Decisions
+1. Salted commitments (B) over a Merkle root: accepted.
+2. The channel salt lives in the listener's per-channel configuration (to be built with the listener/bot issues #18 and #23); it is never on-chain.
+3. `NotRestricted` was appended to the error ABI as 13.
