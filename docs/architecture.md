@@ -48,7 +48,7 @@ The listener sends adapters one envelope per event. `v` is the schema version; c
 - `type` is `"message"` (from `msg`) or `"notice"` (admin-set change). A notice carries `event` (the topic, e.g. `"admin_add"`) and `data` (`{ "admin": "G..." }`, `{ "threshold": 2 }` or `{}`) instead of `publisher`/`payload`.
 - `channelId` is a decimal string (u64 does not fit a JS number). `eventId` is the idempotency key for retries.
 - **Webhook**: POST the envelope as `application/json`.
-- **ntfy**: POST to the topic; title `Channel <channelId>`, body is the payload as UTF-8 text, or `binary message` when it is not valid UTF-8, with the explorer link as the `Click` header.
+- **ntfy**: POST to the topic URL (optional bearer token for protected topics); title `Channel <channelId>`, body is the payload as UTF-8 text, `Binary message (N bytes)` when it is not valid UTF-8, or `Message too large to display` above 4,000 bytes (ntfy turns larger bodies into attachments). Notices send `Channel notice: <event>`.
 - **Telegram**: rendered from the same envelope by the same text rule, plus the transaction verification link (issue #24).
 
 ## Listener pipeline
@@ -72,6 +72,6 @@ Run tests with a throwaway Postgres: `DATABASE_URL=postgresql://notify:notify@lo
 Author-only: the contract stores one `upgrader` address, set by the constructor at deploy (`deployArgs.upgrader` in `caatinga.config.ts`), and `upgrade(new_wasm_hash)` requires its auth. No multisig and no notice period in v1; the README states this openly. A later version moves to multisig with a notice period.
 
 ## Status
-Contract: create/publish, publisher management, threshold-gated admin actions, admin-change events and tests are implemented. Restricted-channel subscriber approval (D1) stores only salted commitments, see `docs/restricted-channels.md`. Listener ingestion, routing, webhook delivery and retries are implemented; Telegram and ntfy adapters, target registration and the CLI are still skeletons.
+Contract: create/publish, publisher management, threshold-gated admin actions, admin-change events and tests are implemented. Restricted-channel subscriber approval (D1) stores only salted commitments, see `docs/restricted-channels.md`. Listener ingestion, routing, webhook delivery and retries are implemented; The ntfy adapter and target registration (`pnpm --filter @notify/listener targets add|remove|list`; secrets via `NOTIFY_TARGET_KEYS`, never argv) are implemented; the Telegram adapter and the SDK/CLI packages are still skeletons.
 
 Contract rules worth knowing: closed channels reject every mutation (closing is final); `publish` rejects empty payloads; publisher grants survive `transfer_channel` (they cannot be enumerated).

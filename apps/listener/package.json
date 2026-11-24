@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
+    "targets": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate"

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import type { DeliveryEnvelope } from "@notify/protocol-types";
-import { type DeliveryAdapter, PermanentDeliveryError, type Target } from "./types.js";
+import { type DeliveryAdapter, type Target, failForStatus } from "./types.js";
 
 const TIMEOUT_MS = 10_000;
 
@@ -20,15 +20,6 @@ export const webhookAdapter: DeliveryAdapter = {
       body,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (res.ok) return;
-    const detail = `webhook responded ${res.status}`;
-    // 4xx other than timeouts/rate limits will not fix itself.
-    if (
-      res.status === 410 ||
-      (res.status >= 400 && res.status < 500 && ![408, 429].includes(res.status))
-    ) {
-      throw new PermanentDeliveryError(detail);
-    }
-    throw new Error(detail);
+    if (!res.ok) failForStatus("webhook", res.status);
   },
 };
