@@ -3,7 +3,12 @@ import type { Db } from "../db/index.js";
 import { deliveries, subscriptions } from "../db/schema.js";
 import type { EnvelopeLoader } from "../ingest/index.js";
 import { log } from "../log.js";
-import { type DeliveryAdapter, PermanentDeliveryError } from "./types.js";
+import {
+  type DeliveryAdapter,
+  PermanentDeliveryError,
+  RetryAfterError,
+  TargetGoneError,
+} from "./types.js";
 
 export interface WorkerOptions {
   maxAttempts: number;
@@ -106,6 +111,13 @@ export async function processDue(
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       const attempts = row.attempts + 1;
+      if (err instanceof TargetGoneError) {
+        await db
+          .update(subscriptions)
+          .set({ active: false })
+          .where(eq(subscriptions.id, target.id));
+        log("warn", "target deactivated", { subscriptionId: target.id, kind: target.kind });
+      }
       if (err instanceof PermanentDeliveryError || attempts >= opts.maxAttempts) {
         await kill(reason);
         continue;
@@ -116,7 +128,11 @@ export async function processDue(
           attempts,
           lastError: reason,
           nextAttemptAt: new Date(
-            opts.now().getTime() + backoffMs(attempts, opts.baseDelayMs, opts.maxDelayMs),
+            opts.now().getTime() +
+              Math.max(
+                backoffMs(attempts, opts.baseDelayMs, opts.maxDelayMs),
+                err instanceof RetryAfterError ? err.retryAfterMs : 0,
+              ),
           ),
         })
         .where(eq(deliveries.id, id));
