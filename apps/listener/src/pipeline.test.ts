@@ -81,6 +81,9 @@ describe.skipIf(!safe)("listener pipeline (Postgres)", () => {
   async function seed() {
     const target = await addTarget(1n);
     await route(db, message("e1"));
+    // Postgres stamps microseconds, the worker compares against a millisecond clock:
+    // backdate so the row is always due and the test never races the same millisecond.
+    await db.execute(sql`update deliveries set next_attempt_at = now() - interval '1 minute'`);
     const { loader } = loaderFor([]);
     loader.remember({
       v: 1,
