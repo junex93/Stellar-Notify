@@ -1,9 +1,34 @@
-import type { DeliveryMessage } from "@notify/protocol-types";
-import type { DeliveryAdapter, Target } from "./types.js";
+import { createHmac } from "node:crypto";
+import type { DeliveryEnvelope } from "@notify/protocol-types";
+import { type DeliveryAdapter, PermanentDeliveryError, type Target } from "./types.js";
 
+const TIMEOUT_MS = 10_000;
+
+/** POSTs the envelope as JSON. With a secret, adds `X-Notify-Signature: sha256=<hmac>`. */
 export const webhookAdapter: DeliveryAdapter = {
   kind: "webhook",
-  async deliver(_target: Target, _message: DeliveryMessage) {
-    throw new Error("not implemented");
+  async deliver(target: Target, message: DeliveryEnvelope) {
+    const body = JSON.stringify(message);
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (target.keys) {
+      const sig = createHmac("sha256", target.keys).update(body).digest("hex");
+      headers["x-notify-signature"] = `sha256=${sig}`;
+    }
+    const res = await fetch(target.endpoint, {
+      method: "POST",
+      headers,
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.ok) return;
+    const detail = `webhook responded ${res.status}`;
+    // 4xx other than timeouts/rate limits will not fix itself.
+    if (
+      res.status === 410 ||
+      (res.status >= 400 && res.status < 500 && ![408, 429].includes(res.status))
+    ) {
+      throw new PermanentDeliveryError(detail);
+    }
+    throw new Error(detail);
   },
 };
