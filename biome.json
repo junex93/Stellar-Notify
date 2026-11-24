@@ -3,5 +3,13 @@
   "organizeImports": { "enabled": true },
   "linter": { "enabled": true, "rules": { "recommended": true } },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
-  "files": { "ignore": ["**/generated/**", "**/dist/**", "contracts/**/target/**", "node_modules"] }
+  "files": {
+    "ignore": [
+      "**/generated/**",
+      "**/dist/**",
+      "contracts/**/target/**",
+      "contracts/**/test_snapshots/**",
+      "node_modules"
+    ]
+  }
 }
