@@ -1,0 +1,27 @@
+{
+  "name": "stellar-notify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": { "onlyBuiltDependencies": ["@biomejs/biome", "esbuild"] },
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "contracts:doctor": "ctg doctor",
+    "contracts:build": "ctg build channels",
+    "contracts:test": "cargo test --manifest-path contracts/channels/Cargo.toml",
+    "contracts:deploy": "ctg deploy channels --source ${CAATINGA_SOURCE:-notify-dev}",
+    "contracts:generate": "ctg generate",
+    "db:up": "docker compose up -d postgres"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@caatinga/cli": "3.14.0",
+    "@caatinga/core": "3.14.0",
+    "typescript": "5.7.3"
+  }
+}

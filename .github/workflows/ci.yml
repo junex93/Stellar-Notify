@@ -1,0 +1,25 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: rustup target add wasm32v1-none
+      - run: cargo install --locked stellar-cli
+      - run: npm i -g pnpm@10 && pnpm install --frozen-lockfile
+      - run: cargo fmt --check --manifest-path contracts/channels/Cargo.toml
+      - run: cargo clippy --all-targets --manifest-path contracts/channels/Cargo.toml -- -D warnings
+      - run: pnpm contracts:test
+      - run: pnpm contracts:doctor
+      - run: pnpm contracts:build
+  ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i -g pnpm@10 && pnpm install --frozen-lockfile
+      - run: pnpm lint && pnpm typecheck && pnpm test

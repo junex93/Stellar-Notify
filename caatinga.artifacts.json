@@ -1,0 +1,10 @@
+{
+  "project": "stellar-notify",
+  "networks": {
+    "testnet": {
+      "contracts": {},
+      "dependencyGraph": {}
+    }
+  },
+  "version": 2
+}

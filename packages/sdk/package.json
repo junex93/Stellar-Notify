@@ -1,0 +1,17 @@
+{
+  "name": "@notify/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@notify/protocol-types": "workspace:*",
+    "@stellar/stellar-sdk": "17.4.0"
+  },
+  "devDependencies": { "vitest": "5.1.1" }
+}
