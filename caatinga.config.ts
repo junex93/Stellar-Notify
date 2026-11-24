@@ -11,6 +11,15 @@ export default defineConfig({
       deployArgs: { upgrader: process.env.CAATINGA_SOURCE ?? "notify-dev" },
     },
   },
+  frontend: {
+    bindingsOutput: "./packages/sdk/src/generated",
+    envFile: ".env",
+    env: {
+      channels: "NOTIFY_CHANNELS_CONTRACT_ID",
+      rpcUrl: "STELLAR_RPC_URL",
+      networkPassphrase: "STELLAR_NETWORK_PASSPHRASE",
+    },
+  },
   networks: {
     testnet: {
       rpcUrl: "https://soroban-testnet.stellar.org",

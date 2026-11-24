@@ -2,8 +2,30 @@
   "project": "stellar-notify",
   "networks": {
     "testnet": {
-      "contracts": {},
-      "dependencyGraph": {}
+      "contracts": {
+        "channels": {
+          "contractId": "CCUF7UNB2BFPCDL4RKHQP4FKH5FJNZDGSE5C5V2ATIX3OAG6YRAROFIH",
+          "wasmHash": "fe3e5096bb8431ef743aec3487fb56cbd52f740314ef6e22c773f8eba50e12e0",
+          "deployedAt": "2026-11-24T14:32:25.705Z",
+          "sourcePath": "./contracts/channels",
+          "wasmPath": "./contracts/channels/target/wasm32v1-none/release/channels.wasm",
+          "dependencies": [],
+          "resolvedDeployArgs": {
+            "upgrader": "notify-dev"
+          },
+          "metadata": {
+            "gitCommit": "a603b27014cd1b1c5849a6a8428645bd7131eeeb",
+            "rustcVersion": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+            "caatingaVersion": "3.14.0",
+            "network": "testnet",
+            "timestamp": "2026-11-24T14:32:25.688Z",
+            "checksum": "fe3e5096bb8431ef743aec3487fb56cbd52f740314ef6e22c773f8eba50e12e0"
+          }
+        }
+      },
+      "dependencyGraph": {
+        "channels": []
+      }
     }
   },
   "version": 2
