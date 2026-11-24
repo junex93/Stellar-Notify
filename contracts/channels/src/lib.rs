@@ -220,6 +220,54 @@ impl ChannelsContract {
         Ok(())
     }
 
+    /// 1 admin, restricted channels only. `id` is the salted commitment
+    /// `SHA-256("notify-sub-v1" || channel_id || salt || wallet XDR)`; the salt
+    /// never goes on-chain, so approved wallets cannot be enumerated.
+    pub fn approve_subscriber(
+        env: Env,
+        channel_id: u64,
+        admin: Address,
+        id: BytesN<32>,
+    ) -> Result<(), Error> {
+        let channel = open_channel_for_admin(&env, channel_id, &admin)?;
+        if channel.kind != ChannelKind::Restricted {
+            return Err(Error::NotRestricted);
+        }
+        let key = DataKey::Subscriber(channel_id, id.clone());
+        env.storage().persistent().set(&key, &true);
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        events::SubscriberApproved { channel_id, id }.publish(&env);
+        Ok(())
+    }
+
+    /// 1 admin, restricted channels only. Removing an unknown id is a no-op
+    /// that still emits the event, so listeners can re-check.
+    pub fn remove_subscriber(
+        env: Env,
+        channel_id: u64,
+        admin: Address,
+        id: BytesN<32>,
+    ) -> Result<(), Error> {
+        let channel = open_channel_for_admin(&env, channel_id, &admin)?;
+        if channel.kind != ChannelKind::Restricted {
+            return Err(Error::NotRestricted);
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::Subscriber(channel_id, id.clone()));
+        events::SubscriberRemoved { channel_id, id }.publish(&env);
+        Ok(())
+    }
+
+    /// Read-only check used by the listener and the Telegram bot.
+    pub fn is_approved(env: Env, channel_id: u64, id: BytesN<32>) -> bool {
+        env.storage()
+            .persistent()
+            .has(&DataKey::Subscriber(channel_id, id))
+    }
+
     /// Channel threshold. At most `MAX_ADMINS` admins.
     pub fn add_admin(
         env: Env,

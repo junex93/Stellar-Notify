@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Vec};
+use soroban_sdk::{contracttype, Address, BytesN, Vec};
 
 /// Hard caps keep loops and event sizes bounded on attacker-shaped input.
 pub const MAX_ADMINS: u32 = 10;
@@ -35,4 +35,7 @@ pub enum DataKey {
     NextId,
     Channel(u64),
     Publisher(u64, Address),
+    /// Opaque salted commitment of an approved subscriber (restricted
+    /// channels only); see docs/restricted-channels.md.
+    Subscriber(u64, BytesN<32>),
 }

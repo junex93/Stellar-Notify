@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, Bytes};
+use soroban_sdk::{contractevent, Address, Bytes, BytesN};
 
 /// Topics: ("msg", channel_id). Payload is opaque; private content must be
 /// encrypted by the sender.
@@ -63,4 +63,19 @@ pub struct ChannelTransferred {
 pub struct ChannelClosed {
     #[topic]
     pub channel_id: u64,
+}
+
+/// `id` is an opaque salted commitment, never a wallet address.
+#[contractevent(topics = ["sub_ok"])]
+pub struct SubscriberApproved {
+    #[topic]
+    pub channel_id: u64,
+    pub id: BytesN<32>,
+}
+
+#[contractevent(topics = ["sub_rm"])]
+pub struct SubscriberRemoved {
+    #[topic]
+    pub channel_id: u64,
+    pub id: BytesN<32>,
 }

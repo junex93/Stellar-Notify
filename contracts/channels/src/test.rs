@@ -385,3 +385,75 @@ fn closed_channel_rejects_publish_and_every_mutation() {
         Err(Ok(Error::ChannelClosed))
     );
 }
+
+#[test]
+fn restricted_channel_subscriber_approval_lifecycle() {
+    let f = setup();
+    let admin = f.who();
+    let id = f.client.create_channel(&admin, &ChannelKind::Restricted);
+    let sub = BytesN::from_array(&f.env, &[7; 32]);
+    let other = BytesN::from_array(&f.env, &[8; 32]);
+
+    assert!(!f.client.is_approved(&id, &sub));
+    f.client.approve_subscriber(&id, &admin, &sub);
+    assert_eq!(f.event_count(), 1);
+    assert!(f.client.is_approved(&id, &sub));
+    assert!(!f.client.is_approved(&id, &other));
+
+    f.client.remove_subscriber(&id, &admin, &sub);
+    assert_eq!(f.event_count(), 1);
+    assert!(!f.client.is_approved(&id, &sub));
+}
+
+#[test]
+fn subscriber_approval_is_admin_only_and_restricted_only() {
+    let f = setup();
+    let admin = f.who();
+    let sub = BytesN::from_array(&f.env, &[7; 32]);
+    let restricted = f.client.create_channel(&admin, &ChannelKind::Restricted);
+    let open = f.client.create_channel(&admin, &ChannelKind::Open);
+    let stranger = f.who();
+
+    assert_eq!(
+        f.client
+            .try_approve_subscriber(&restricted, &stranger, &sub),
+        Err(Ok(Error::NotAdmin))
+    );
+    assert_eq!(
+        f.client.try_remove_subscriber(&restricted, &stranger, &sub),
+        Err(Ok(Error::NotAdmin))
+    );
+    // A publisher is not an admin either.
+    let publisher = f.who();
+    f.client.add_publisher(&restricted, &admin, &publisher);
+    assert_eq!(
+        f.client
+            .try_approve_subscriber(&restricted, &publisher, &sub),
+        Err(Ok(Error::NotAdmin))
+    );
+    assert_eq!(
+        f.client.try_approve_subscriber(&open, &admin, &sub),
+        Err(Ok(Error::NotRestricted))
+    );
+    assert_eq!(
+        f.client.try_remove_subscriber(&open, &admin, &sub),
+        Err(Ok(Error::NotRestricted))
+    );
+    assert_eq!(
+        f.client.try_approve_subscriber(&99, &admin, &sub),
+        Err(Ok(Error::ChannelNotFound))
+    );
+}
+
+#[test]
+fn closed_restricted_channel_rejects_subscriber_changes() {
+    let f = setup();
+    let admin = f.who();
+    let id = f.client.create_channel(&admin, &ChannelKind::Restricted);
+    f.client.close_channel(&id, &vec![&f.env, admin.clone()]);
+    let sub = BytesN::from_array(&f.env, &[7; 32]);
+    assert_eq!(
+        f.client.try_approve_subscriber(&id, &admin, &sub),
+        Err(Ok(Error::ChannelClosed))
+    );
+}
