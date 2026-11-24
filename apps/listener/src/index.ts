@@ -1,4 +1,5 @@
 import { connect, runMigrations } from "./db/index.js";
+import { ntfyAdapter } from "./delivery/ntfy.js";
 import { webhookAdapter } from "./delivery/webhook.js";
 import { processDue } from "./delivery/worker.js";
 import { EnvelopeLoader, RpcEventSource, ingestOnce } from "./ingest/index.js";
@@ -20,7 +21,7 @@ await runMigrations(db);
 
 const source = new RpcEventSource(rpcUrl, contractId);
 const loader = new EnvelopeLoader(source);
-const adapters = [webhookAdapter];
+const adapters = [webhookAdapter, ntfyAdapter];
 
 let running = true;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
