@@ -2,6 +2,9 @@ use soroban_sdk::{contracttype, Address, Vec};
 
 /// Hard caps keep loops and event sizes bounded on attacker-shaped input.
 pub const MAX_ADMINS: u32 = 10;
+/// Storage TTLs in ledgers (~5s each): extend to 60 days once below 30.
+pub const TTL_THRESHOLD: u32 = 30 * 17_280;
+pub const TTL_EXTEND_TO: u32 = 60 * 17_280;
 pub const MAX_PAYLOAD_BYTES: u32 = 4096; // docs/costs.md
 
 /// Open: anyone subscribes. Restricted: admins approve subscribers.

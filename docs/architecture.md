@@ -64,4 +64,6 @@ The listener sends adapters one envelope per event. `v` is the schema version; c
 Author-only: the contract stores one `upgrader` address, set by the constructor at deploy (`deployArgs.upgrader` in `caatinga.config.ts`), and `upgrade(new_wasm_hash)` requires its auth. No multisig and no notice period in v1; the README states this openly. A later version moves to multisig with a notice period.
 
 ## Status
-Skeleton only: contract methods return `NotImplemented`, listener adapters and CLI commands throw.
+Contract: create/publish, publisher management, threshold-gated admin actions, admin-change events and tests are implemented. Restricted-channel subscriber approval (D1, issue #9) is not: its on-chain representation still needs a design that keeps member lists private. Listener adapters and CLI commands are still skeletons.
+
+Contract rules worth knowing: closed channels reject every mutation (closing is final); `publish` rejects empty payloads; publisher grants survive `transfer_channel` (they cannot be enumerated).

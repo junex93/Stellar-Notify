@@ -16,4 +16,5 @@ pub enum Error {
     NotAdmin = 9,
     LastAdmin = 10,
     InvalidPayload = 11,
+    AlreadyAdmin = 12,
 }
