@@ -18,6 +18,18 @@ jobs:
       - run: pnpm contracts:build
   ts:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: notify
+          POSTGRES_PASSWORD: notify
+          POSTGRES_DB: notify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U notify" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://notify:notify@localhost:5432/notify
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
