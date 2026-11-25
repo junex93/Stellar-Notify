@@ -7,12 +7,14 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "targets": "tsx src/cli.ts",
+    "channels": "tsx src/channels-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@notify/protocol-types": "workspace:*",
+    "@notify/sdk": "workspace:*",
     "@stellar/stellar-sdk": "17.4.0",
     "drizzle-orm": "0.45.4",
     "pg": "8.23.1"

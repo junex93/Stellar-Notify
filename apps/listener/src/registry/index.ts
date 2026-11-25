@@ -30,11 +30,14 @@ function httpUrl(endpoint: string, what: string): URL {
   return url;
 }
 
+export function assertChannelId(channelId: bigint): void {
+  if (channelId < 1n || channelId > MAX_U64)
+    throw new Error("channelId must be a u64 starting at 1");
+}
+
 /** Throws a descriptive error for anything the adapters could not deliver to. */
 export function validateTarget(input: TargetInput): void {
-  if (input.channelId < 1n || input.channelId > MAX_U64) {
-    throw new Error("channelId must be a u64 starting at 1");
-  }
+  assertChannelId(input.channelId);
   switch (input.kind) {
     case "webhook":
       httpUrl(input.endpoint, "webhook endpoint");
@@ -87,4 +90,17 @@ export async function listTargets(db: Db, channelId?: bigint): Promise<Target[]>
   return (
     channelId === undefined ? query : query.where(eq(subscriptions.channelId, channelId))
   ).orderBy(asc(subscriptions.id));
+}
+
+/** Every channel a given chat or endpoint follows through one delivery kind. */
+export async function listTargetsByEndpoint(
+  db: Db,
+  kind: TargetKind,
+  endpoint: string,
+): Promise<Target[]> {
+  return db
+    .select()
+    .from(subscriptions)
+    .where(and(eq(subscriptions.kind, kind), eq(subscriptions.endpoint, endpoint)))
+    .orderBy(asc(subscriptions.channelId));
 }
