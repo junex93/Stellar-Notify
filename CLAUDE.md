@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stellar Notify Protocol, a "ntfy.sh for Stellar": wallets create notification channels in a Soroban contract, admins/publishers publish messages as contract events, and open-source listeners deliver those events as push. `docs/architecture.md` is the spec for wire formats and authorization; read it before changing the contract, `@notify/protocol-types`, or the listener.
 
-**Status: architecture skeleton.** Contract methods (except `upgrade`/`upgrader`/`version`) return `Error::NotImplemented`; listener adapters, SDK methods and CLI commands throw `not implemented`. The `every_stub_reports_not_implemented` contract test asserts this, so it must be updated as methods are implemented.
+**Status: v1 in progress.** The channels contract, the listener (webhook, ntfy and Telegram adapters, Postgres cursor, retries), `@notify/sdk` and the `notify` CLI are implemented. Still open: the Telegram bot (subscribe/unsubscribe, wallet proof, rendering), removing the PWA scaffold, and the end-to-end demo (`docs/demo.md`). `apps/listener/src/delivery/webpush.ts` and the `apps/web` scaffold stay until the PWA is removed.
 
 ## Commands
 
@@ -17,7 +17,7 @@ pnpm install
 pnpm lint                 # biome check . (lint + format + import order)
 pnpm format               # biome format --write .
 pnpm typecheck            # tsc --noEmit in every workspace
-pnpm test                 # vitest in every workspace (no TS tests exist yet; --passWithNoTests)
+pnpm test                 # vitest in every workspace (Postgres tests in the listener need DATABASE_URL)
 pnpm --filter @notify/listener exec vitest run path/to/file.test.ts -t "name"   # single TS test
 
 pnpm contracts:test       # cargo test for contracts/channels

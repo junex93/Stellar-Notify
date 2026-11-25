@@ -10,11 +10,13 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "news-digest": "tsx src/news-digest.ts"
   },
   "dependencies": {
     "@notify/sdk": "workspace:*",
-    "commander": "15.1.0"
+    "commander": "15.1.0",
+    "fast-xml-parser": "5.12.1"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
