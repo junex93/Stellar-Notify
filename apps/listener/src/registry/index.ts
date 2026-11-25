@@ -2,15 +2,15 @@ import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import { subscriptions } from "../db/schema.js";
 
-export const TARGET_KINDS = ["webhook", "ntfy", "telegram", "webpush"] as const;
+export const TARGET_KINDS = ["webhook", "ntfy", "telegram"] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 
 export interface TargetInput {
   channelId: bigint;
   kind: TargetKind;
-  /** webhook/ntfy: URL; telegram: numeric chat id or @channelname; webpush: push service URL. */
+  /** webhook/ntfy: URL; telegram: numeric chat id or @channelname. */
   endpoint: string;
-  /** webhook: HMAC secret; ntfy: bearer token; webpush: JSON `{p256dh, auth}`. */
+  /** webhook: HMAC secret; ntfy: bearer token. */
   keys?: string | null;
 }
 
@@ -51,20 +51,6 @@ export function validateTarget(input: TargetInput): void {
         throw new Error("telegram endpoint must be a numeric chat id or @channelname");
       }
       return;
-    case "webpush": {
-      httpUrl(input.endpoint, "webpush endpoint");
-      let keys: unknown;
-      try {
-        keys = JSON.parse(input.keys ?? "");
-      } catch {
-        keys = null;
-      }
-      const k = keys as { p256dh?: unknown; auth?: unknown } | null;
-      if (typeof k?.p256dh !== "string" || typeof k?.auth !== "string") {
-        throw new Error("webpush keys must be JSON with p256dh and auth");
-      }
-      return;
-    }
     default:
       throw new Error(`unknown target kind: ${String(input.kind)}`);
   }

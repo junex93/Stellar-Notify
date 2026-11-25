@@ -4,8 +4,8 @@ Source of truth for decisions: `docs/decisoes.md` in the upstream repo (D1–D9)
 
 ## Parts
 1. **On-chain** (`contracts/channels`): one Soroban contract holding channels, admins, publishers and thresholds. A published message is a contract event `("msg", channel_id)` with an opaque payload. No protocol fee (D5); no trustline per channel (D6). Managed with Caatinga (`ctg`).
-2. **Listener** (`apps/listener`): polls Soroban RPC `getEvents` from a Postgres-stored ledger cursor, routes by channel id only, delivers through adapters (webhook, Web Push, ntfy; APNs/FCM later). Never stores, reads or forges content.
-3. **Receiver** (`apps/web`): PWA with Web Push; wallet connect, channel list, on-chain verification and decryption are future work.
+2. **Listener** (`apps/listener`): polls Soroban RPC `getEvents` from a Postgres-stored ledger cursor, routes by channel id only, delivers through adapters (webhook, ntfy, Telegram; APNs/FCM later). Never stores, reads or forges content.
+3. **Receiver**: the Telegram bot, run by the listener (`apps/listener/src/bot`). There is no PWA: wallet connect and payload decryption are future work.
 
 ## Shared packages
 - `@notify/protocol-types`: event and delivery formats (v1, see below).

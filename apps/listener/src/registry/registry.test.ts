@@ -13,9 +13,6 @@ describe("validateTarget", () => {
     ).not.toThrow();
     expect(() => validateTarget({ ...ok, kind: "telegram", endpoint: "-1001234" })).not.toThrow();
     expect(() => validateTarget({ ...ok, kind: "telegram", endpoint: "@mychannel" })).not.toThrow();
-    expect(() =>
-      validateTarget({ ...ok, kind: "webpush", keys: JSON.stringify({ p256dh: "a", auth: "b" }) }),
-    ).not.toThrow();
   });
 
   it("rejects what no adapter could deliver to", () => {
@@ -28,7 +25,9 @@ describe("validateTarget", () => {
       /topic/,
     );
     expect(() => validateTarget({ ...ok, kind: "telegram", endpoint: "abc" })).toThrow(/chat id/);
-    expect(() => validateTarget({ ...ok, kind: "webpush" })).toThrow(/p256dh/);
+    expect(() => validateTarget({ ...ok, kind: "webpush" as never })).toThrow(
+      /unknown target kind/,
+    );
   });
 });
 
