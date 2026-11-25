@@ -17,6 +17,7 @@
     "buffer": "6.0.3"
   },
   "devDependencies": {
+    "@types/node": "26.6.6",
     "vitest": "5.1.1"
   }
 }
