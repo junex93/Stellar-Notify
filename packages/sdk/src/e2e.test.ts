@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { NotifyClient, NotifyContractError, keypairFromSecret } from "./index.js";
 
 /** Opt-in: submits real transactions on testnet with the `notify-dev` keystore identity. */
@@ -8,18 +8,24 @@ const enabled = process.env.NOTIFY_E2E === "1";
 const alias = process.env.CAATINGA_SOURCE ?? "notify-dev";
 
 describe.skipIf(!enabled)("NotifyClient on testnet", () => {
-  const artifacts = JSON.parse(
-    readFileSync(new URL("../../../caatinga.artifacts.json", import.meta.url), "utf8"),
-  );
-  const keypair = keypairFromSecret(
-    execFileSync("stellar", ["keys", "secret", alias], { encoding: "utf8" }),
-  );
-  const me = keypair.publicKey();
-  const client = new NotifyClient({
-    rpcUrl: "https://soroban-testnet.stellar.org",
-    networkPassphrase: "Test SDF Network ; September 2015",
-    contractId: artifacts.networks.testnet.contracts.channels.contractId,
-    keypair,
+  let client: NotifyClient;
+  let me: string;
+
+  // Setup lives in beforeAll: skipIf skips the tests but still runs the describe body.
+  beforeAll(() => {
+    const artifacts = JSON.parse(
+      readFileSync(new URL("../../../caatinga.artifacts.json", import.meta.url), "utf8"),
+    );
+    const keypair = keypairFromSecret(
+      execFileSync("stellar", ["keys", "secret", alias], { encoding: "utf8" }),
+    );
+    me = keypair.publicKey();
+    client = new NotifyClient({
+      rpcUrl: "https://soroban-testnet.stellar.org",
+      networkPassphrase: "Test SDF Network ; September 2015",
+      contractId: artifacts.networks.testnet.contracts.channels.contractId,
+      keypair,
+    });
   });
 
   it("creates a channel, publishes and reads it back", { timeout: 120_000 }, async () => {
