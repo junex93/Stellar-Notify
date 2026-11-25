@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stellar Notify Protocol, a "ntfy.sh for Stellar": wallets create notification channels in a Soroban contract, admins/publishers publish messages as contract events, and open-source listeners deliver those events as push. `docs/architecture.md` is the spec for wire formats and authorization; read it before changing the contract, `@notify/protocol-types`, or the listener.
 
-**Status: v1 in progress.** The channels contract, the listener (webhook, ntfy and Telegram adapters, Postgres cursor, retries), `@notify/sdk` and the `notify` CLI are implemented. Still open: the Telegram bot (subscribe/unsubscribe, wallet proof, rendering), removing the PWA scaffold, and the end-to-end demo (`docs/demo.md`). `apps/listener/src/delivery/webpush.ts` and the `apps/web` scaffold stay until the PWA is removed.
+**Status: v1 in progress.** The channels contract, the listener (webhook, ntfy and Telegram adapters, Postgres cursor, retries), the Telegram bot (inside the listener), `@notify/sdk` and the `notify` CLI are implemented; the PWA is gone. Known gap: a restricted-channel subscriber removed on-chain (`sub_rm`) is not dropped by the listener yet (see `docs/restricted-channels.md`).
 
 ## Commands
 
@@ -32,7 +32,8 @@ pnpm contracts:generate   # ctg generate -> packages/sdk/src/generated
 
 pnpm db:up                                  # local Postgres on port 5433 (notify/notify/notify)
 pnpm --filter @notify/listener db:generate  # drizzle-kit migrations from src/db/schema.ts
-pnpm --filter @notify/listener dev          # needs DATABASE_URL (see .env.example)
+pnpm --filter @notify/listener dev          # needs DATABASE_URL (see .env.example); runs the bot when TELEGRAM_BOT_TOKEN is set
+pnpm --filter @notify/listener channels set <id> [label]   # off-chain channel name / restricted-channel salt
 ```
 
 CI (`.github/workflows/ci.yml`) runs two jobs: contracts (`cargo fmt --check`, `clippy -D warnings`, tests, `ctg doctor`, `ctg build`) and TS (`pnpm lint && pnpm typecheck && pnpm test`).

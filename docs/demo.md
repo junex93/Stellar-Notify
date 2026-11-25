@@ -15,17 +15,27 @@ pnpm --filter @notify/cli exec tsx src/index.ts channel create
 # prints the channel id, e.g. 3
 ```
 
-## 2. Point the listener at your Telegram chat
+## 2. Follow the channel from Telegram
 
-Message your bot once, then use your numeric chat id (or `@channelname` if the bot is an admin
-of a Telegram channel).
+Start the listener; with `TELEGRAM_BOT_TOKEN` set it also runs the bot.
 
 ```sh
-pnpm --filter @notify/listener targets add <channelId> telegram <chat_id>
 TELEGRAM_BOT_TOKEN=<token> pnpm --filter @notify/listener dev
 ```
 
-The bot token is read from the environment only; it is never stored in the database.
+Optionally give the channel a name (shown in every message; the contract stores none):
+
+```sh
+pnpm --filter @notify/listener channels set <channelId> "My news"
+```
+
+Then, in a private chat with your bot, send `/subscribe <channelId>` (`/list` and
+`/unsubscribe <channelId>` also work). Each message ends with a `Verify on-chain` link to the
+transaction in stellar.expert.
+
+The bot token is read from the environment only; it is never stored in the database. Without the
+bot you can still register a chat by hand:
+`pnpm --filter @notify/listener targets add <channelId> telegram <chat_id>`.
 
 ## 3. Publish a digest
 
