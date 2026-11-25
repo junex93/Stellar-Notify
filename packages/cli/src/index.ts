@@ -1,21 +1,10 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { buildProgram } from "./program.js";
+import { runtime } from "./runtime.js";
 
-const program = new Command("notify").description("Stellar Notify publisher CLI");
-
-const channel = program.command("channel").description("Manage channels");
-channel
-  .command("create")
-  .option("--restricted", "approve subscribers manually")
-  .action(() => {
-    throw new Error("not implemented");
-  });
-
-program
-  .command("publish <channelId> <message>")
-  .description("Publish a message to a channel")
-  .action(() => {
-    throw new Error("not implemented");
-  });
-
-await program.parseAsync();
+try {
+  await buildProgram(runtime).parseAsync();
+} catch (e) {
+  console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+  process.exitCode = 1;
+}
