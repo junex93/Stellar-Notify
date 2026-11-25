@@ -1,21 +1,26 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { NotifyClient } from "@notify/sdk";
+import { loadConfig } from "./config.js";
+import { loadKeypair } from "./identity.js";
+import { buildProgram } from "./program.js";
 
-const program = new Command("notify").description("Stellar Notify publisher CLI");
+const program = buildProgram({
+  async connect(alias) {
+    const keypair = await loadKeypair(alias);
+    const client = new NotifyClient({ ...loadConfig(), keypair });
+    return { client, address: keypair.publicKey() };
+  },
+  async readStdin() {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString("utf8");
+  },
+  out: (line) => console.log(line),
+});
 
-const channel = program.command("channel").description("Manage channels");
-channel
-  .command("create")
-  .option("--restricted", "approve subscribers manually")
-  .action(() => {
-    throw new Error("not implemented");
-  });
-
-program
-  .command("publish <channelId> <message>")
-  .description("Publish a message to a channel")
-  .action(() => {
-    throw new Error("not implemented");
-  });
-
-await program.parseAsync();
+try {
+  await program.parseAsync();
+} catch (e) {
+  console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+  process.exitCode = 1;
+}
