@@ -23,7 +23,12 @@ export interface Channel {
   { tag: "Upgrader"; values: void } |
   { tag: "NextId"; values: void } |
   { tag: "Channel"; values: readonly [bigint] } |
-  { tag: "Publisher"; values: readonly [bigint, string] };
+  { tag: "Publisher"; values: readonly [bigint, string] } |
+  /**
+   * Opaque salted commitment of an approved subscriber (restricted
+   * channels only); see docs/restricted-channels.md.
+   */
+  { tag: "Subscriber"; values: readonly [bigint, Uint8Array] };
 
 /**
  * Open: anyone subscribes. Restricted: admins approve subscribers.
@@ -47,7 +52,9 @@ export const Error = {
   8 : { message: "DuplicateSigner" },
   9 : { message: "NotAdmin" },
   10 : { message: "LastAdmin" },
-  11 : { message: "InvalidPayload" }
+  11 : { message: "InvalidPayload" },
+  12 : { message: "AlreadyAdmin" },
+  13 : { message: "NotRestricted" }
 }
 
 export interface Error {
@@ -144,6 +151,17 @@ export interface ThresholdChangedEvent {
 }
 
 /**
+ * Event: SubscriberRemoved
+ */
+export interface SubscriberRemovedEvent {
+  name: "SubscriberRemoved";
+  data: {
+    channel_id: bigint;
+    id?: Uint8Array;
+  };
+}
+
+/**
  * Event: ChannelTransferred
  */
 export interface ChannelTransferredEvent {
@@ -152,5 +170,16 @@ export interface ChannelTransferredEvent {
     channel_id: bigint;
   };
 }
-    export type ContractEvent = AdminAddedEvent | AdminRemovedEvent | ChannelClosedEvent | ChannelCreatedEvent | PublisherAddedEvent | MessagePublishedEvent | PublisherRemovedEvent | ThresholdChangedEvent | ChannelTransferredEvent;
+
+/**
+ * `id` is an opaque salted commitment, never a wallet address.
+ */
+export interface SubscriberApprovedEvent {
+  name: "SubscriberApproved";
+  data: {
+    channel_id: bigint;
+    id?: Uint8Array;
+  };
+}
+    export type ContractEvent = AdminAddedEvent | AdminRemovedEvent | ChannelClosedEvent | ChannelCreatedEvent | PublisherAddedEvent | MessagePublishedEvent | PublisherRemovedEvent | ThresholdChangedEvent | SubscriberRemovedEvent | ChannelTransferredEvent | SubscriberApprovedEvent;
     
