@@ -1,14 +1,17 @@
+import { subscriberCommitment, toHex } from "@notify/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { type Deps, type Publisher, buildProgram } from "./program.js";
 
 const ME = "GME";
 
-function setup(stdin = "") {
+function setup(stdin = "", env: Record<string, string> = {}) {
   const client = {
     createChannel: vi.fn(async () => 7n),
     publish: vi.fn(async () => {}),
     addPublisher: vi.fn(async () => {}),
     removePublisher: vi.fn(async () => {}),
+    approveSubscriber: vi.fn(async (..._args: unknown[]) => {}),
+    removeSubscriber: vi.fn(async (..._args: unknown[]) => {}),
     getChannel: vi.fn(async () => ({
       admins: [ME],
       kind: "open" as const,
@@ -18,7 +21,7 @@ function setup(stdin = "") {
   } satisfies Publisher;
   const out: string[] = [];
   const connect = vi.fn(async (_alias: string) => ({ client, address: ME }));
-  const deps: Deps = { connect, readStdin: async () => stdin, out: (l) => out.push(l) };
+  const deps: Deps = { connect, readStdin: async () => stdin, out: (l) => out.push(l), env };
   const run = (...args: string[]) => buildProgram(deps).parseAsync(args, { from: "user" });
   return { client, out, connect, run };
 }
@@ -73,5 +76,38 @@ describe("notify CLI", () => {
     const { connect, run } = setup();
     await expect(run("publish", "abc", "x")).rejects.toThrow('invalid channel id "abc"');
     expect(connect).not.toHaveBeenCalled();
+  });
+
+  it("generates a 32-byte hex salt", async () => {
+    const { out, run } = setup();
+    await run("channel", "salt");
+    expect(out[0]).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  describe("subscriber", () => {
+    const salt = "00".repeat(32);
+    const wallet = "GC2SRYODTQBZMFTPGAZH7PTHDYDBQ7K247NR2NN5LTCYXR7OMQ42YJML";
+
+    it("approves with a commitment derived from the salt, never the wallet", async () => {
+      const { client, run } = setup("", { NOTIFY_CHANNEL_SALT: salt });
+      await run("subscriber", "approve", "7", wallet);
+      const call = client.approveSubscriber.mock.calls[0] as unknown[];
+      expect(call.slice(0, 2)).toEqual([7n, ME]);
+      expect(toHex(call[2] as Uint8Array)).toBe(
+        toHex(subscriberCommitment(7n, new Uint8Array(32), wallet)),
+      );
+    });
+    it("removes the same commitment", async () => {
+      const { client, run } = setup("", { NOTIFY_CHANNEL_SALT: salt });
+      await run("subscriber", "remove", "7", wallet);
+      expect(client.removeSubscriber).toHaveBeenCalledTimes(1);
+    });
+    it("fails clearly when the salt is missing, before connecting", async () => {
+      const { connect, run } = setup();
+      await expect(run("subscriber", "approve", "7", wallet)).rejects.toThrow(
+        /NOTIFY_CHANNEL_SALT/,
+      );
+      expect(connect).not.toHaveBeenCalled();
+    });
   });
 });

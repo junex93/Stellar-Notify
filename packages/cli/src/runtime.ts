@@ -16,4 +16,5 @@ export const runtime: Deps = {
     return Buffer.concat(chunks).toString("utf8");
   },
   out: (line) => console.log(line),
+  env: process.env,
 };

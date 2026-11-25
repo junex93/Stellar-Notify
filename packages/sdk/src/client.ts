@@ -99,6 +99,21 @@ export class NotifyClient {
     await this.send(await this.client.close_channel({ channel_id: channelId, signers }));
   }
 
+  /** 1 admin, restricted channels only. `id` is a {@link subscriberCommitment}, never a wallet. */
+  async approveSubscriber(channelId: ChannelId, admin: string, id: Uint8Array): Promise<void> {
+    await this.send(await this.client.approve_subscriber({ channel_id: channelId, admin, id }));
+  }
+
+  async removeSubscriber(channelId: ChannelId, admin: string, id: Uint8Array): Promise<void> {
+    await this.send(await this.client.remove_subscriber({ channel_id: channelId, admin, id }));
+  }
+
+  /** Read-only: whether the commitment is an approved subscriber of the channel. */
+  async isApproved(channelId: ChannelId, id: Uint8Array): Promise<boolean> {
+    const tx = await this.simulated(() => this.client.is_approved({ channel_id: channelId, id }));
+    return tx.result;
+  }
+
   /** Read-only: simulated, never signed or submitted. */
   async getChannel(channelId: ChannelId): Promise<ChannelInfo> {
     const tx = await this.simulated(() => this.client.get_channel({ channel_id: channelId }));
