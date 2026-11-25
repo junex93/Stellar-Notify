@@ -86,9 +86,6 @@ describe.skipIf(!safe)("listener pipeline (Postgres)", () => {
   async function seed() {
     const target = await addTarget(1n);
     await route(db, message("e1"));
-    // Postgres stamps microseconds, the worker compares against a millisecond clock:
-    // backdate so the row is always due and the test never races the same millisecond.
-    await db.execute(sql`update deliveries set next_attempt_at = now() - interval '1 minute'`);
     const { loader } = loaderFor([]);
     loader.remember({
       v: 1,
@@ -168,6 +165,17 @@ describe.skipIf(!safe)("listener pipeline (Postgres)", () => {
     const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, target.id));
     expect(sub?.active).toBe(false);
     expect(await route(db, message("later"))).toBe(0);
+  });
+
+  it("makes a delivery due at the instant it was routed", async () => {
+    // A past instant: with the database clock (now) the row would not be due yet.
+    const instant = new Date("2020-01-01T00:00:00.123Z");
+    await addTarget(1n);
+    await route(db, message("race"), instant);
+    const gone = new EnvelopeLoader({ loadEvent: async () => null });
+    expect(
+      await processDue(db, [adapter(async () => {})], gone, { now: () => instant }),
+    ).toMatchObject({ dead: 1 });
   });
 
   it("dead-letters when the target is inactive or the event is gone", async () => {
