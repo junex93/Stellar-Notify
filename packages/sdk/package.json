@@ -14,7 +14,7 @@
   "dependencies": {
     "@notify/protocol-types": "workspace:*",
     "@stellar/stellar-sdk": "17.4.0",
-    "buffer": "^6.0.3"
+    "buffer": "6.0.3"
   },
   "devDependencies": {
     "vitest": "5.1.1"
