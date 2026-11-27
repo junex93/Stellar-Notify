@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -22,9 +23,9 @@ export const subscriptions = pgTable(
   {
     id: serial("id").primaryKey(),
     channelId: bigint("channel_id", { mode: "bigint" }).notNull(),
-    kind: text("kind").notNull(), // webhook | ntfy | telegram | webpush
+    kind: text("kind").notNull(), // webhook | ntfy | telegram
     endpoint: text("endpoint").notNull(),
-    keys: text("keys"), // webhook: optional HMAC secret; webpush: JSON p256dh/auth
+    keys: text("keys"), // webhook: optional HMAC secret; ntfy: bearer token
     /** False once a target is known dead (e.g. the user blocked the bot). */
     active: boolean("active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -53,4 +54,35 @@ export const deliveries = pgTable(
     sentAt: timestamp("sent_at"),
   },
   (t) => [uniqueIndex("deliveries_event_subscription").on(t.eventId, t.subscriptionId)],
+);
+
+/**
+ * Off-chain, per-channel settings: the contract stores neither names nor salts.
+ * The salt is secret (it derives restricted-channel subscriber ids, see
+ * docs/restricted-channels.md) and must never be logged or sent anywhere.
+ */
+export const channelConfig = pgTable("channel_config", {
+  channelId: bigint("channel_id", { mode: "bigint" }).primaryKey(),
+  label: text("label"),
+  /** 64 hex characters; restricted channels only. */
+  salt: text("salt"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Small key/value store for the bot, e.g. the Telegram `getUpdates` offset. */
+export const botState = pgTable("bot_state", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
+/** Pending wallet-ownership challenges (restricted channels); one per chat and channel. */
+export const proofChallenges = pgTable(
+  "proof_challenges",
+  {
+    chatId: bigint("chat_id", { mode: "bigint" }).notNull(),
+    channelId: bigint("channel_id", { mode: "bigint" }).notNull(),
+    nonce: text("nonce").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.chatId, t.channelId] })],
 );

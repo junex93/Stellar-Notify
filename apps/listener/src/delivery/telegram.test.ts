@@ -1,6 +1,7 @@
 import type { DeliveryEnvelope } from "@notify/protocol-types";
 import { describe, expect, it } from "vitest";
-import { createTelegramAdapter } from "./telegram.js";
+import { explorerTxUrl } from "./explorer.js";
+import { createTelegramAdapter, renderTelegram } from "./telegram.js";
 import { PermanentDeliveryError, RetryAfterError, TargetGoneError } from "./types.js";
 
 const envelope: DeliveryEnvelope = {
@@ -67,5 +68,56 @@ describe("telegramAdapter", () => {
     }) as unknown as typeof fetch);
     const err = await adapter.deliver({ endpoint: "1" }, envelope).catch((e) => e);
     expect((err as Error).message).not.toContain("SECRET");
+  });
+
+  it("sends the rendered text with label and verification link when configured", async () => {
+    const calls: { body: Record<string, unknown> }[] = [];
+    const fetchImpl = (async (_u: string, init: RequestInit) => {
+      calls.push({ body: JSON.parse(init.body as string) });
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    const adapter = createTelegramAdapter("1:S", fetchImpl, "https://tg.test", {
+      labelFor: async () => "News",
+      explorerTxUrl: explorerTxUrl("Test SDF Network ; September 2015"),
+    });
+    await adapter.deliver({ endpoint: "1" }, envelope);
+    expect(calls[0]?.body.text).toBe(
+      "News (channel 7)\n\nhello\n\nVerify on-chain: https://stellar.expert/explorer/testnet/tx/ff",
+    );
+  });
+});
+
+describe("renderTelegram", () => {
+  it("falls back to the channel id without a label or an explorer", async () => {
+    expect(await renderTelegram(envelope)).toBe("Channel 7\n\nhello");
+  });
+  it("renders notices with the link", async () => {
+    const notice: DeliveryEnvelope = {
+      v: 1,
+      type: "notice",
+      eventId: "e2",
+      channelId: "7",
+      event: "closed",
+      data: {},
+      ledger: 2,
+      txHash: "aa",
+      publishedAt: "2026-01-01T00:00:00Z",
+    };
+    const text = await renderTelegram(notice, { explorerTxUrl: (h) => `https://x.test/${h}` });
+    expect(text).toBe("Channel 7\n\nChannel notice: closed\n\nVerify on-chain: https://x.test/aa");
+  });
+  it("keeps a maximum-size payload under the Telegram limit", async () => {
+    const big: DeliveryEnvelope = {
+      ...envelope,
+      payload: Buffer.from("é".repeat(1900)).toString("base64"),
+    };
+    const text = await renderTelegram(big, {
+      labelFor: async () => "L".repeat(64),
+      explorerTxUrl: explorerTxUrl("Public Global Stellar Network ; September 2015"),
+    });
+    expect([...text].length).toBeLessThanOrEqual(4096);
+  });
+  it("has no link for an unknown network", () => {
+    expect(explorerTxUrl("Standalone Network ; February 2017")).toBeUndefined();
   });
 });

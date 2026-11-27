@@ -1,6 +1,6 @@
 # Restricted channels: subscriber approval (D1) — design proposal
 
-Status: approved; contract side implemented for issue #9 (`approve_subscriber`, `remove_subscriber`, `is_approved`, `sub_ok`/`sub_rm`, `NotRestricted = 13`). The listener/bot side (salt storage, re-check on `sub_rm`) is not implemented.
+Status: approved and implemented. Contract (#9): `approve_subscriber`, `remove_subscriber`, `is_approved`, `sub_ok`/`sub_rm`, `NotRestricted = 13`. SDK/CLI: `subscriberCommitment`, `notify channel salt`, `notify subscriber approve|remove`. Listener/bot (#23): per-channel salt in `channel_config`, SEP-53 challenge flow. **Not implemented:** re-checking approval when `sub_rm` arrives, so a removed subscriber keeps receiving until they `/unsubscribe` or an operator removes the target.
 
 ## What "restricted" can and cannot mean
 Every published message is a public contract event, so a restricted channel cannot hide content from chain readers. Restriction controls **who receives pushes** from listeners. Confidentiality needs the publisher to encrypt the payload (already stated in `events.rs`). Admin approval gates the key/receipt side; it is not access control on the ledger.
@@ -19,7 +19,7 @@ Constraints from the project (issues #9, #18, #22, #23, `types.rs`):
 | D. Merkle root of members | one root | new root per change | admin must hold and share the member list; proofs needed per subscriber |
 
 ## Proposal: salted commitments (B)
-**Commitment.** `id = SHA-256("notify-sub-v1" || channel_id (8 bytes BE) || salt (32 bytes) || wallet address XDR)`.
+**Commitment.** `id = SHA-256("notify-sub-v1" || channel_id (8 bytes BE) || salt (32 bytes) || wallet address XDR)`, where the address XDR is the `ScVal` of the wallet's address (`new Address(g).toScVal().toXDR()`); `subscriberCommitment` in `@notify/sdk` is the reference implementation.
 - `salt` is random per channel, created off-chain by the creator, shared among admins and with the listener serving that channel. It is never sent on-chain.
 - Without the salt, nobody can test "is wallet X approved?" or enumerate wallets from commitments. Without it a plain hash of an address would be dictionary-attackable against known wallet lists, so a salt-less variant is rejected.
 
@@ -33,7 +33,7 @@ Constraints from the project (issues #9, #18, #22, #23, `types.rs`):
 
 **Flow with the Telegram bot (#23).**
 1. User `/subscribe <channel_id>` for a restricted channel; bot sends a challenge.
-2. User signs it with their wallet (SEP-53-style message signing); bot verifies the signature, learns the wallet address.
+2. User signs it with their wallet (SEP-53 message signing, e.g. `stellar message sign`) and replies `/verify <channel_id> <wallet> <signature>`. The challenge is the single line `notify-sub-v1 channel=<id> chat=<chat id> nonce=<hex> exp=<unix>`: bound to the chat and the channel, valid for 10 minutes, single use. The bot verifies the signature against the wallet address given.
 3. Bot computes `id` with the channel salt and calls `is_approved`. If false, it tells the user to ask an admin; the admin computes the same `id` and calls `approve_subscriber`.
 4. On success the listener stores the chat registration (#18) against the channel. Revocation: `remove_subscriber` emits `sub_rm`; the listener re-checks approval on that event (or on each delivery batch) and drops the target.
 

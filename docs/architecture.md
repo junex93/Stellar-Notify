@@ -4,8 +4,8 @@ Source of truth for decisions: `docs/decisoes.md` in the upstream repo (D1–D9)
 
 ## Parts
 1. **On-chain** (`contracts/channels`): one Soroban contract holding channels, admins, publishers and thresholds. A published message is a contract event `("msg", channel_id)` with an opaque payload. No protocol fee (D5); no trustline per channel (D6). Managed with Caatinga (`ctg`).
-2. **Listener** (`apps/listener`): polls Soroban RPC `getEvents` from a Postgres-stored ledger cursor, routes by channel id only, delivers through adapters (webhook, Web Push, ntfy; APNs/FCM later). Never stores, reads or forges content.
-3. **Receiver** (`apps/web`): PWA with Web Push; wallet connect, channel list, on-chain verification and decryption are future work.
+2. **Listener** (`apps/listener`): polls Soroban RPC `getEvents` from a Postgres-stored ledger cursor, routes by channel id only, delivers through adapters (webhook, ntfy, Telegram; APNs/FCM later). Never stores, reads or forges content.
+3. **Receiver**: the Telegram bot, run by the listener (`apps/listener/src/bot`). There is no PWA: wallet connect and payload decryption are future work.
 
 ## Shared packages
 - `@notify/protocol-types`: event and delivery formats (v1, see below).
@@ -49,12 +49,19 @@ The listener sends adapters one envelope per event. `v` is the schema version; c
 - `channelId` is a decimal string (u64 does not fit a JS number). `eventId` is the idempotency key for retries.
 - **Webhook**: POST the envelope as `application/json`.
 - **ntfy**: POST to the topic URL (optional bearer token for protected topics); title `Channel <channelId>`, body is the payload as UTF-8 text, `Binary message (N bytes)` when it is not valid UTF-8, or `Message too large to display` above 4,000 bytes (ntfy turns larger bodies into attachments). Notices send `Channel notice: <event>`.
-- **Telegram**: rendered from the same envelope by the same text rule, plus the transaction verification link (issue #24).
+- **Telegram**: `sendMessage` with the channel name (off-chain label from `channel_config`, else `Channel <id>`), the payload text by the same rule (capped so the whole message stays under 4096 characters), and `Verify on-chain: <stellar.expert tx URL>` for the configured network (omitted for unknown networks).
 
 ## Listener pipeline
 `ingestOnce` polls `getEvents` (the RPC allows 5 topic patterns per filter, so topics are split across filters), decodes `msg` and admin-change events, routes by channel id to active targets and only then advances the Postgres ledger cursor. A crash replays from the stored ledger; the unique `(event_id, subscription_id)` delivery row makes replays harmless.
 
 The `deliveries` table holds only references (event id, ledger), never message content. A retry re-loads the event from RPC by ledger (a small in-memory cache covers the first attempt), so events older than the RPC retention window cannot be retried and are dead-lettered. Failed sends back off exponentially (30s doubling, capped at 1h) and are dead-lettered after 8 attempts or on a permanent error (e.g. webhook 4xx other than 408/429). The webhook adapter signs the body with `X-Notify-Signature: sha256=<hmac>` when the target has a secret. Logs are one JSON object per line.
+
+## Telegram bot
+The bot runs inside the listener process when `TELEGRAM_BOT_TOKEN` is set (long polling `getUpdates`, offset stored in `bot_state`). It only serves private chats and links a chat to a channel through the same target registry as the CLI (`subscriptions`, kind `telegram`, endpoint = chat id).
+
+- `/subscribe <id>`: reads the channel from the contract. Open channels subscribe immediately. Restricted channels need the channel's salt in `channel_config` and a wallet-ownership proof, see `docs/restricted-channels.md`. `/unsubscribe <id>`, `/list`, `/verify <id> <wallet> <signature>`.
+- At most 20 channels per chat. Closed and unknown channels are refused.
+- Off-chain, per-channel settings (name, restricted-channel salt) live in `channel_config` and are set with `pnpm --filter @notify/listener channels set <id> [label]` (salt via `NOTIFY_CHANNEL_SALT`, never argv). The salt is never logged or sent anywhere.
 
 Run tests with a throwaway Postgres: `DATABASE_URL=postgresql://notify:notify@localhost:<port>/notify` (the suite truncates tables and refuses database names other than `notify` or `*_test`).
 
@@ -72,6 +79,6 @@ Run tests with a throwaway Postgres: `DATABASE_URL=postgresql://notify:notify@lo
 Author-only: the contract stores one `upgrader` address, set by the constructor at deploy (`deployArgs.upgrader` in `caatinga.config.ts`), and `upgrade(new_wasm_hash)` requires its auth. No multisig and no notice period in v1; the README states this openly. A later version moves to multisig with a notice period.
 
 ## Status
-Contract: create/publish, publisher management, threshold-gated admin actions, admin-change events and tests are implemented. Restricted-channel subscriber approval (D1) stores only salted commitments, see `docs/restricted-channels.md`. Listener ingestion, routing, webhook delivery and retries are implemented; The ntfy adapter and target registration (`pnpm --filter @notify/listener targets add|remove|list`; secrets via `NOTIFY_TARGET_KEYS`, never argv) are implemented; the Telegram adapter (`TELEGRAM_BOT_TOKEN` from the environment only; 429 honors `retry_after`; a blocked bot or missing chat deactivates the target) is implemented. The SDK/CLI packages are still skeletons.
+Contract: create/publish, publisher management, threshold-gated admin actions, admin-change events and tests are implemented. Restricted-channel subscriber approval (D1) stores only salted commitments, see `docs/restricted-channels.md`. Listener ingestion, routing, webhook delivery and retries are implemented; The ntfy adapter and target registration (`pnpm --filter @notify/listener targets add|remove|list`; secrets via `NOTIFY_TARGET_KEYS`, never argv) are implemented; the Telegram adapter (`TELEGRAM_BOT_TOKEN` from the environment only; 429 honors `retry_after`; a blocked bot or missing chat deactivates the target) is implemented. `@notify/sdk` and the `notify` CLI (channel create/show/salt, publish, publisher and subscriber management) are implemented. Telegram bot: see below.
 
 Contract rules worth knowing: closed channels reject every mutation (closing is final); `publish` rejects empty payloads; publisher grants survive `transfer_channel` (they cannot be enumerated).

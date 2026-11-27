@@ -7,20 +7,20 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "targets": "tsx src/cli.ts",
+    "channels": "tsx src/channels-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@notify/protocol-types": "workspace:*",
+    "@notify/sdk": "workspace:*",
     "@stellar/stellar-sdk": "17.4.0",
     "drizzle-orm": "0.45.4",
-    "pg": "8.23.1",
-    "web-push": "4.0.0"
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
-    "@types/web-push": "3.6.4",
     "drizzle-kit": "0.31.11",
     "tsx": "4.23.15",
     "vitest": "5.1.1"

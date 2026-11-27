@@ -10,6 +10,29 @@ import {
 
 const TIMEOUT_MS = 10_000;
 
+/** Telegram caps a message at 4096 characters; the body gets what the header and link leave. */
+const MAX_BODY_BYTES = 3800;
+
+export interface TelegramOptions {
+  /** Off-chain channel name (docs: channel_config); absent channels show `Channel <id>`. */
+  labelFor?(channelId: string): Promise<string | undefined>;
+  /** Explorer link that lets anyone verify the sender on-chain; omitted when unknown. */
+  explorerTxUrl?(txHash: string): string | undefined;
+}
+
+/** Message text: channel name, payload (or notice), and the on-chain verification link. */
+export async function renderTelegram(
+  message: DeliveryEnvelope,
+  options: TelegramOptions = {},
+): Promise<string> {
+  const label = await options.labelFor?.(message.channelId);
+  const header = label ? `${label} (channel ${message.channelId})` : `Channel ${message.channelId}`;
+  const parts = [header, displayText(message, MAX_BODY_BYTES)];
+  const link = options.explorerTxUrl?.(message.txHash);
+  if (link) parts.push(`Verify on-chain: ${link}`);
+  return parts.join("\n\n");
+}
+
 interface TelegramReply {
   ok: boolean;
   description?: string;
@@ -25,6 +48,7 @@ export function createTelegramAdapter(
   token: string,
   fetchImpl: typeof fetch = fetch,
   apiBase = "https://api.telegram.org",
+  options: TelegramOptions = {},
 ): DeliveryAdapter {
   return {
     kind: "telegram",
@@ -36,7 +60,7 @@ export function createTelegramAdapter(
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             chat_id: target.endpoint,
-            text: `Channel ${message.channelId}\n\n${displayText(message)}`,
+            text: await renderTelegram(message, options),
             disable_web_page_preview: true,
           }),
           signal: AbortSignal.timeout(TIMEOUT_MS),

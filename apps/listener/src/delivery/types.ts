@@ -8,7 +8,7 @@ export interface Target {
 
 /** Forwards content without opening it. */
 export interface DeliveryAdapter {
-  readonly kind: "webpush" | "webhook" | "ntfy" | "telegram";
+  readonly kind: "webhook" | "ntfy" | "telegram";
   /** Throws on failure; `PermanentDeliveryError` marks the target dead. */
   deliver(target: Target, message: DeliveryEnvelope): Promise<void>;
 }
